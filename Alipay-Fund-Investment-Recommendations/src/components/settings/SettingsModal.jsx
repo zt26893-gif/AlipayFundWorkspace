@@ -3,7 +3,7 @@
  * 所有改动即时生效并自动保存。
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import useSettingsStore from '../../store/useSettingsStore';
 import { translate } from '../../i18n';
 import './settings.css';
@@ -49,6 +49,23 @@ export default function SettingsModal({ onClose }) {
   const setTheme = useSettingsStore((s) => s.setTheme);
   const setLanguage = useSettingsStore((s) => s.setLanguage);
   const setAI = useSettingsStore((s) => s.setAI);
+  const [dbPath, setDbPath] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/health', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => setDbPath(d.db || ''))
+      .catch(() => {});
+  }, []);
+
+  const copyPath = async () => {
+    try {
+      await navigator.clipboard.writeText(dbPath);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {}
+  };
 
   const t = useMemo(() => (key, vars) => translate(language, key, vars), [language]);
 
@@ -155,6 +172,18 @@ export default function SettingsModal({ onClose }) {
               </label>
             </div>
             <p className="settings-hint">{t('settings.ai.visionHint')}</p>
+          </section>
+
+          {/* 数据位置 */}
+          <section className="settings-section">
+            <h3 className="settings-section-title">{t('settings.dataPath')}</h3>
+            <div className="settings-datapath">
+              <code>{dbPath || '—'}</code>
+              <button className="settings-copy" onClick={copyPath} disabled={!dbPath}>
+                {copied ? t('settings.copied') : t('settings.copyPath')}
+              </button>
+            </div>
+            <p className="settings-hint">{t('settings.dataPathHint')}</p>
           </section>
         </div>
 

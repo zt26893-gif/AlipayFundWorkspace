@@ -185,3 +185,37 @@
 :root[data-theme='light'] .settings-option {
   background: #fff;
 }
+
+.settings-datapath {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+.settings-datapath code {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.settings-copy {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  font-size: 0.72rem;
+  color: var(--text-accent);
+  background: var(--color-accent-bg);
+  border: 1px solid var(--border-hover);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.settings-copy:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

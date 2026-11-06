@@ -41,6 +41,9 @@ for %%f in ("%~dp0.build\AI-Fund-Tracker-*.exe") do (
   echo [OK] updated %REL%\%%~nxf
 )
 
+rem Remove intermediate exe so only release\ has a clickable one
+del /q "%~dp0.build\AI-Fund-Tracker-*.exe" >nul 2>nul
+
 rem Backup current database outside the release folder
 call "%~dp0backup-data.cmd" quiet
 
