@@ -22,3 +22,7 @@ downloads/
 smoke*.png
 Thumbs.db
 desktop.ini
+
+# ===== U 盘打包产物 =====
+usb-package/
+
