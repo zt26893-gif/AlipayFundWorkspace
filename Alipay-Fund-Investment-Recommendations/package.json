@@ -51,6 +51,7 @@
       "!node_modules/**/*"
     ],
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "portable",
