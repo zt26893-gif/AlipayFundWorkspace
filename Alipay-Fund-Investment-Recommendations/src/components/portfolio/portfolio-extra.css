@@ -836,3 +836,35 @@
 .tx-item.tx-convert {
   border-left-color: rgba(99, 102, 241, 0.5);
 }
+
+.convert-spread-rate {
+  color: var(--text-accent);
+  font-weight: 700;
+}
+
+.convert-reset-link {
+  margin-left: 6px;
+  padding: 0 4px;
+  font-size: 0.66rem;
+  color: var(--color-warning);
+  background: transparent;
+  border: 1px dashed rgba(245, 158, 11, 0.5);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.convert-reset-link:hover {
+  color: #fff;
+  background: rgba(245, 158, 11, 0.25);
+}
+.preview-row-spread {
+  align-items: flex-start;
+}
+
+.convert-spread-meta {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+}

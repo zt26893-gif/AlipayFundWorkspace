@@ -210,13 +210,25 @@ export function calcConvert({
   sellTiers = SELL_FEE_TIERS,
   rounding = CONVERT_ROUNDING.FLOOR,
   cashBalance = 0,
+  // 手动指定申购补差费金额（费用明细里直接改金额时用），传了就覆盖按费率算出的值
+  spreadFeeOverride = null,
 }) {
   const grossAmount = round2(shares * fromNav);
   const redeemRate = getSellFeeRate(holdingDays, sellTiers);
   const redeemFee = round2(grossAmount * redeemRate);
 
   const spreadRate = Math.max(0, toBuyFeeRate - fromBuyFeeRate);
-  const spreadFee = spreadRate > 0 ? round2((grossAmount / (1 + spreadRate)) * spreadRate) : 0;
+  const spreadFee =
+    spreadFeeOverride != null && Number.isFinite(Number(spreadFeeOverride))
+      ? round2(Math.max(0, Number(spreadFeeOverride)))
+      : spreadRate > 0
+        ? round2((grossAmount / (1 + spreadRate)) * spreadRate)
+        : 0;
+  // 手动覆盖时，展示用的补差费率由金额反推：fee = gross / (1 + r) * r  =>  r = fee / (gross - fee)
+  const effectiveSpreadRate =
+    spreadFeeOverride != null && grossAmount > spreadFee && grossAmount > 0
+      ? spreadFee / (grossAmount - spreadFee)
+      : spreadRate;
 
   const totalFee = round2(redeemFee + spreadFee);
   const netAmount = round2(grossAmount - totalFee);
@@ -269,6 +281,7 @@ export function calcConvert({
     redeemRate,
     redeemFee,
     spreadRate,
+    effectiveSpreadRate,
     spreadFee,
     totalFee,
     netAmount,

@@ -88,7 +88,7 @@ function InlineRate({ value, onCommit, disabled = false, title = '点击修改�
  * 行内可编辑费用金额：点一下变成输入框，回车/失焦提交，Esc 取消。
  * 用于在费用结果里直接改「赎回费」金额，提交后由调用方反推费率。
  */
-function InlineFee({ value, onCommit, disabled = false, title = '点击修改金额' }) {
+function InlineFee({ value, onCommit, disabled = false, title = '点击修改金额', prefix = '−', format = fmtMoney }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState('');
 
@@ -130,7 +130,10 @@ function InlineFee({ value, onCommit, disabled = false, title = '点击修改金
         setEditing(true);
       }}
     >
-      <span className="inline-fee-num">−{fmtMoney(value)}</span>
+      <span className="inline-fee-num">
+        {prefix}
+        {format(value)}
+      </span>
       <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
         <path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
       </svg>
@@ -148,6 +151,8 @@ export default function ConvertModal({ fund, onClose }) {
   const [sharesInput, setSharesInput] = useState('');
   // 零头处理：默认留存剩余资金
   const [rounding, setRounding] = useState(CONVERT_ROUNDING.FLOOR);
+  // 手动覆盖的申购补差费（null = 按费率算）；改费用合计 / 净转入金额 / 剩余资金都会换算到它
+  const [spreadFeeManual, setSpreadFeeManual] = useState(null);
   const [orderTime, setOrderTime] = useState(() => {
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -213,6 +218,11 @@ export default function ConvertModal({ fund, onClose }) {
     };
   }, [toCode]);
 
+  // 份额 / 转入基金 / 交易时间一变，之前手动改过的补差费就失效，重置回按费率计算
+  useEffect(() => {
+    setSpreadFeeManual(null);
+  }, [sharesInput, toCode, orderTime]);
+
   // T 日（成交日）与确认日
   const navDateStr = calcNavDate(new Date(orderTime).toISOString());
   const confirmDateStr = calcConfirmDate(new Date(orderTime).toISOString());
@@ -274,6 +284,7 @@ export default function ConvertModal({ fund, onClose }) {
       fromBuyFeeRate: fromCfg.buyRate,
       toBuyFeeRate: toCfg.buyRate,
       sellTiers: fromCfg.sellTiers,
+      spreadFeeOverride: spreadFeeManual,
     };
     return {
       floor: calcConvert({ ...args, rounding: CONVERT_ROUNDING.FLOOR }),
@@ -292,6 +303,7 @@ export default function ConvertModal({ fund, onClose }) {
     fromCfg.buyRate,
     fromCfg.sellTiers,
     toCfg.buyRate,
+    spreadFeeManual,
   ]);
 
   const preview = variants ? variants[rounding] : null;
@@ -330,6 +342,38 @@ export default function ConvertModal({ fund, onClose }) {
       }
     }
     setFundSellTierRate(fund.code, redeemTierIndex, rate);
+  };
+
+  /** 手动改「申购补差费」金额（会限制在 0 ~ 转出金额−赎回费 之间） */
+  const applySpreadFee = (amount) => {
+    if (!preview) return;
+    const max = Math.max(0, preview.grossAmount - preview.redeemFee - 0.01);
+    setSpreadFeeManual(Math.max(0, Math.min(Number(amount) || 0, max)));
+  };
+
+  /** 改「费用合计」：赎回费不动，差额全部落到申购补差费 */
+  const applyTotalFee = (amount) => {
+    if (!preview) return;
+    applySpreadFee(Number(amount) - preview.redeemFee);
+  };
+
+  /** 改「净转入金额」：转出金额 − 赎回费 − 净额 = 补差费 */
+  const applyNetAmount = (amount) => {
+    if (!preview) return;
+    applySpreadFee(preview.grossAmount - preview.redeemFee - Number(amount));
+  };
+
+  /**
+   * 改「剩余资金」：份额只保留 2 位小数，所以退回金额最大只有「1 分份额对应的钱」。
+   * 这里固定当前份额档位，把净额调整到 k×净值 + 目标零头，再让补差费吸收差额。
+   */
+  const applyRemainder = (amount) => {
+    if (!preview || !(toNav > 0)) return;
+    const maxRemainder = Math.max(0, toNav * 0.01 - 0.0001);
+    const target = Math.max(0, Math.min(Number(amount) || 0, maxRemainder));
+    const floorShares = Math.floor((preview.netAmount / toNav) * 100) / 100;
+    const targetNet = parseFloat((floorShares * toNav + target).toFixed(2));
+    applySpreadFee(preview.grossAmount - preview.redeemFee - targetNet);
   };
 
   const handleSubmit = () => {
@@ -524,28 +568,58 @@ export default function ConvertModal({ fund, onClose }) {
                   />
                 </span>
               </div>
-              <div className="preview-row">
+              <div className="preview-row preview-row-spread">
                 <span className="preview-label">
                   申购补差费（转出{' '}
                   <InlineRate
                     value={fromCfg.buyRate}
-                    onCommit={(v) => setFundBuyRate(fund.code, v)}
+                    onCommit={(v) => {
+                      setSpreadFeeManual(null);
+                      setFundBuyRate(fund.code, v);
+                    }}
                   />{' '}
                   → 转入{' '}
                   <InlineRate
                     value={toCfg.buyRate}
-                    onCommit={(v) => setFundBuyRate(toFund.code, v)}
-                  />{'）'}
+                    onCommit={(v) => {
+                      setSpreadFeeManual(null);
+                      setFundBuyRate(toFund.code, v);
+                    }}
+                  />
+                  ）
+                  <span className="convert-spread-meta">
+                    补差率 <b className="convert-spread-rate">{(preview.effectiveSpreadRate * 100).toFixed(2)}%</b>
+                    {spreadFeeManual != null ? (
+                      <button
+                        type="button"
+                        className="convert-reset-link"
+                        onClick={() => setSpreadFeeManual(null)}
+                        title="清除手动补差费，恢复按费率计算"
+                      >
+                        恢复按费率
+                      </button>
+                    ) : null}
+                  </span>
                 </span>
-                <span className="preview-value">{fmtMoney(preview.spreadFee)}</span>
+                <span className="preview-value">
+                  <InlineFee
+                    value={preview.spreadFee}
+                    disabled={!(preview.grossAmount > preview.redeemFee)}
+                    onCommit={applySpreadFee}
+                  />
+                </span>
               </div>
               <div className="preview-row">
                 <span className="preview-label">费用合计</span>
-                <span className="preview-value text-warning">−{fmtMoney(preview.totalFee)}</span>
+                <span className="preview-value">
+                  <InlineFee value={preview.totalFee} onCommit={applyTotalFee} />
+                </span>
               </div>
               <div className="preview-row">
                 <span className="preview-label">净转入金额</span>
-                <span className="preview-value">{fmtMoney(preview.netAmount)}</span>
+                <span className="preview-value">
+                  <InlineFee value={preview.netAmount} onCommit={applyNetAmount} prefix="" />
+                </span>
               </div>
               {preview.shareAdjust > 0 ? (
                 <div className="preview-row">
@@ -565,10 +639,19 @@ export default function ConvertModal({ fund, onClose }) {
                 <span className="preview-label">预估转入份额</span>
                 <span className="preview-value text-accent">{preview.toShares.toFixed(2)} 份</span>
               </div>
-              {preview.remainderCash > 0 ? (
+              {rounding === CONVERT_ROUNDING.FLOOR || preview.remainderCash > 0 ? (
                 <div className="preview-row">
                   <span className="preview-label">剩余资金（退回账户）</span>
-                  <span className="preview-value text-rise">+{fmtResidual(preview.remainderCash)}</span>
+                  <span className="preview-value">
+                    <InlineFee
+                      value={preview.remainderCash}
+                      onCommit={applyRemainder}
+                      prefix="+"
+                      format={fmtResidual}
+                      disabled={rounding !== CONVERT_ROUNDING.FLOOR}
+                      title={`修改剩余资金会调整净转入金额；份额保留 2 位小数，最多约 ¥${(toNav * 0.01).toFixed(3)}`}
+                    />
+                  </span>
                 </div>
               ) : null}
             </div>
@@ -583,7 +666,7 @@ export default function ConvertModal({ fund, onClose }) {
           ) : null}
 
           <p className="trade-input-hint convert-date-hint">
-            费用明细里的费率和赎回费金额都能直接点开修改：改金额会自动反推费率，并保存为对应基金的覆盖费率。
+            费用明细里的金额都能直接点开修改：赎回费改金额会保存为该基金的覆盖费率；补差费、费用合计、净转入金额、剩余资金只影响本次转换。
           </p>
 
           <p className="trade-tip">
