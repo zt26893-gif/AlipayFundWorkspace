@@ -11,7 +11,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import ReactECharts from 'echarts-for-react';
 import useFundStore from '../../store/useFundStore';
-import { fetchFundHistory } from '../../services/fundService';
+import { fetchFundHistory, fetchFundInfo } from '../../services/fundService';
+import { fetchTopFunds, scoreCandidate } from '../../services/rankService';
 import { fetchOverviewMarket } from '../../services/overviewService';
 import { buildOverview } from '../../utils/overviewEngine';
 import { fetchOverviewStrategy } from '../../services/aiService';
@@ -49,12 +50,16 @@ function ActionBadge({ action }) {
 
 export default function OverviewPanel({ onOpenFund }) {
   const funds = useFundStore((s) => s.funds);
+  const addFund = useFundStore((s) => s.addFund);
   const [days, setDays] = useState(10);
   const [raw, setRaw] = useState({ fundHistories: [], indexTrend: null, sectors: [] });
   const [loading, setLoading] = useState(true);
   const [strategy, setStrategy] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [error, setError] = useState('');
+  const [buyIdeas, setBuyIdeas] = useState([]);
+  const [buyLoading, setBuyLoading] = useState(true);
+  const [addedCodes, setAddedCodes] = useState({});
   // 记录已生成过策略的数据指纹，避免基金池加载过程中重复调用大模型
   const strategyKeyRef = useRef('');
   const timerRef = useRef(null);
@@ -97,6 +102,89 @@ export default function OverviewPanel({ onOpenFund }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codesKey]);
+
+  // 「推荐买入」候选：排行初筛 → 拉真实净值复核 → 按近 20 个交易日实测收益排序
+  useEffect(() => {
+    let alive = true;
+    setBuyLoading(true);
+
+    (async () => {
+      try {
+        const list = await fetchTopFunds({ limit: 40 });
+        if (!alive) return;
+
+        const pool = new Set(funds.map((f) => f.code));
+        const oneYearAgo = Date.now() - 365 * 24 * 3600 * 1000;
+        const seenNames = new Set();
+        const candidates = list
+          .filter((f) => !pool.has(f.code))
+          .filter((f) => !/货币|理财|短债|定开|封闭/.test(f.name))
+          .filter((f) => {
+            if (!f.inception) return true;
+            return new Date(f.inception).getTime() < oneYearAgo;
+          })
+          .map((f) => ({ ...f, score: scoreCandidate(f) }))
+          .filter((f) => {
+            const base = f.name.replace(/[ABC]$/, '');
+            if (seenNames.has(base)) return false;
+            seenNames.add(base);
+            return true;
+          })
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 10);
+
+        const checked = await Promise.all(
+          candidates.map(async (f) => {
+            const history = await fetchFundHistory(f.code, '1m').catch(() => []);
+            const navs = (history || [])
+              .map((h) => Number(h.nav))
+              .filter((n) => Number.isFinite(n) && n > 0);
+            if (navs.length < 10) return null;
+            const window = navs.slice(-21);
+            const ret = (window[window.length - 1] / window[0] - 1) * 100;
+            if (!Number.isFinite(ret) || ret <= 0 || ret > 30) return null;
+            return { ...f, realReturn: ret };
+          })
+        );
+
+        let picks = checked
+          .filter(Boolean)
+          .sort((a, b) => b.realReturn - a.realReturn)
+          .slice(0, 4);
+        if (picks.length === 0) {
+          picks = candidates.slice(0, 4).map((f) => ({ ...f, realReturn: null }));
+        }
+
+        if (!alive) return;
+        setBuyIdeas(
+          picks.map((f) => ({
+            ...f,
+            reason:
+              f.realReturn != null
+                ? `近 20 个交易日实测 +${f.realReturn.toFixed(2)}%，排行近3月 ${f.threeMonth >= 0 ? '+' : ''}${f.threeMonth.toFixed(2)}%`
+                : `近1月 ${f.oneMonth >= 0 ? '+' : ''}${f.oneMonth.toFixed(2)}%，近3月 ${f.threeMonth >= 0 ? '+' : ''}${f.threeMonth.toFixed(2)}%（未取到净值，按排行）`,
+          }))
+        );
+      } catch {
+        if (alive) setBuyIdeas([]);
+      } finally {
+        if (alive) setBuyLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [codesKey]);
+
+  const handleAddIdea = async (idea) => {
+    const fund = await fetchFundInfo(idea.code);
+    if (fund) {
+      addFund(fund);
+      setAddedCodes((s) => ({ ...s, [idea.code]: true }));
+    }
+  };
 
   const overview = useMemo(
     () =>
@@ -368,6 +456,45 @@ export default function OverviewPanel({ onOpenFund }) {
           </div>
         </div>
       ) : null}
+
+
+      {/* 推荐买入（新基金） */}
+      <div className="ov-card ov-buy-card">
+        <div className="ov-card-head">
+          <h3 className="ov-card-title">
+            推荐买入
+            <span className="ov-alloc-sub">新基金 · 按近 1/3 月动量筛选 · 数据来自天天基金排行</span>
+          </h3>
+        </div>
+        {buyLoading && buyIdeas.length === 0 ? (
+          <div className="ov-buy-empty">正在加载排行数据…</div>
+        ) : buyIdeas.length === 0 ? (
+          <div className="ov-buy-empty">暂时没有符合条件的新基金（或排行接口不可用）</div>
+        ) : (
+          <div className="ov-buy-grid">
+            {buyIdeas.map((idea) => (
+              <div className="ov-buy-tile" key={idea.code}>
+                <div className="ov-alloc-tile-head">
+                  <span className="ov-alloc-name">{idea.name}</span>
+                  <code className="ov-alloc-code">{idea.code}</code>
+                </div>
+                <div className="ov-buy-metrics">
+                  <span>近1月 <b className="text-rise">+{idea.oneMonth.toFixed(2)}%</b></span>
+                  <span>近3月 <b className="text-rise">+{idea.threeMonth.toFixed(2)}%</b></span>
+                </div>
+                <p className="ov-alloc-reason">{idea.reason}</p>
+                <button
+                  className="ov-buy-add"
+                  disabled={!!addedCodes[idea.code]}
+                  onClick={() => handleAddIdea(idea)}
+                >
+                  {addedCodes[idea.code] ? '已加入基金池' : '加入基金池'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* 趋势图 + 侧栏 */}
       <div className="ov-main">

@@ -30,6 +30,16 @@ export default defineConfig({
         target: 'http://127.0.0.1:8787',
         changeOrigin: true,
       },
+      // 东方财富基金排行（推荐买入用）
+      '/api/fundrank': {
+        target: 'https://fund.eastmoney.com',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/fundrank/, ''),
+        headers: {
+          Referer: 'https://fund.eastmoney.com/data/fundranking.html',
+        },
+      },
       // 东方财富基金搜索联想接口代理
       '/api/fundsuggest': {
         target: 'https://fundsuggest.eastmoney.com',

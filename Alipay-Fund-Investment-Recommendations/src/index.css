@@ -2586,3 +2586,17 @@ body {
 .search-input {
   min-width: 0;
 }
+/* 搜索按钮与输入框等高 */
+.search-input-wrapper {
+  align-items: stretch;
+}
+
+.search-btn {
+  align-self: stretch;
+  height: auto;
+  margin: -1px -1px -1px 0; /* 盖住 wrapper 的 1px 边框，和输入框等高 */
+}
+
+.search-icon {
+  align-self: center;
+}

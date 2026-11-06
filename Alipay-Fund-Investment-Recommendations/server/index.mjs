@@ -116,6 +116,7 @@ function replaceState(snapshot) {
 const PROXIES = [
   { prefix: '/api/eastmoney', target: 'https://api.fund.eastmoney.com', headers: { Referer: 'https://fund.eastmoney.com/' } },
   { prefix: '/api/fundsuggest', target: 'https://fundsuggest.eastmoney.com', headers: { Referer: 'https://fund.eastmoney.com/' } },
+  { prefix: '/api/fundrank', target: 'https://fund.eastmoney.com', headers: { Referer: 'https://fund.eastmoney.com/data/fundranking.html' } },
   { prefix: '/api/fundgz', target: 'http://fundgz.1234567.com.cn', headers: {} },
   { prefix: '/api/push2', target: 'http://push2.eastmoney.com', headers: { Referer: 'https://quote.eastmoney.com/' } },
   { prefix: '/api/indexkline', target: 'https://push2his.eastmoney.com', headers: { Referer: 'https://quote.eastmoney.com/' } },
