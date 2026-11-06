@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Electron 桌面壳 —— 把「本地服务端 + 已构建前端」包成一个双击即用的桌面程序
  *
  * 结构：
@@ -35,9 +35,23 @@ const PROJECT_ROOT = app.isPackaged ? path.join(process.resourcesPath, 'app') : 
 const SMOKE_TEST = process.argv.includes('--smoke-test');
 
 app.setName('AI Fund Tracker');
-if (process.env.PORTABLE_EXECUTABLE_DIR) {
-  // 便携版：让浏览器缓存、日志都落在 exe 旁边，真正「拷走就能用」
-  app.setPath('userData', path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'runtime-data'));
+
+// 便携模式：exe 旁边放一个 portable.txt，数据就跟着 exe 走（U 盘场景）。
+// 没有这个标记时，数据统一放在固定目录，避免“点了另一份 exe 就看不到数据”。
+function exeDir() {
+  return process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath);
+}
+
+function isPortableMode() {
+  try {
+    return fs.existsSync(path.join(exeDir(), 'portable.txt'));
+  } catch {
+    return false;
+  }
+}
+
+if (isPortableMode()) {
+  app.setPath('userData', path.join(exeDir(), 'runtime-data'));
 }
 
 let serverProcess = null;
@@ -45,9 +59,39 @@ let mainWindow = null;
 
 function resolveDataDir() {
   if (process.env.ALIPAY_DATA_DIR) return path.resolve(process.env.ALIPAY_DATA_DIR);
-  if (process.env.PORTABLE_EXECUTABLE_DIR) return path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'data');
+  if (isPortableMode()) return path.join(exeDir(), 'data');
   if (app.isPackaged) return path.join(app.getPath('userData'), 'data');
   return path.join(PROJECT_ROOT, 'data');
+}
+
+/**
+ * 首次运行时，如果固定目录还没有数据库、而 exe 旁边旧 data 目录有，
+ * 就自动迁移过去（兼容之前“数据放在 exe 旁边”的版本）。
+ */
+function migrateLegacyData(targetDir) {
+  try {
+    const targetDb = path.join(targetDir, 'app.db');
+    const legacyDb = path.join(exeDir(), 'data', 'app.db');
+    if (!fs.existsSync(legacyDb)) return;
+
+    const targetExists = fs.existsSync(targetDb);
+    if (targetExists) {
+      const targetSize = fs.statSync(targetDb).size;
+      const legacySize = fs.statSync(legacyDb).size;
+      // 目标库只有空表（12KB）而旧库更大时，说明目标还没数据，直接用旧库覆盖
+      if (!(targetSize <= 12288 && legacySize > targetSize)) return;
+    }
+
+    fs.mkdirSync(targetDir, { recursive: true });
+    fs.copyFileSync(legacyDb, targetDb);
+    const legacyBackups = path.join(exeDir(), 'data', 'backups');
+    if (fs.existsSync(legacyBackups)) {
+      fs.cpSync(legacyBackups, path.join(targetDir, 'backups'), { recursive: true });
+    }
+    console.log(`[data] 已从旧目录迁移数据库：${legacyDb} -> ${targetDb}`);
+  } catch (err) {
+    console.warn('[data] 迁移旧数据失败:', err.message);
+  }
 }
 
 function findFreePort(start = 8787, tries = 60) {
@@ -177,6 +221,7 @@ if (!gotLock) {
     Menu.setApplicationMenu(null);
     try {
       const dataDir = resolveDataDir();
+      migrateLegacyData(dataDir);
       const port = await findFreePort(8787);
       serverProcess = startServer(port, dataDir);
       await waitForHealth(port);

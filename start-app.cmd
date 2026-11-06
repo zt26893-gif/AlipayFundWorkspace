@@ -8,7 +8,7 @@ if /i not "%~1"=="nobrowser" set "PORT=%~1"
 if "%PORT%"=="" set "PORT=8787"
 
 rem Share the same database as the desktop app
-set "DATA_DIR=%CD%\..\release\data"
+set "DATA_DIR=%APPDATA%\AI Fund Tracker\data"
 if not exist "%DATA_DIR%" mkdir "%DATA_DIR%"
 
 if not exist "dist\index.html" (
