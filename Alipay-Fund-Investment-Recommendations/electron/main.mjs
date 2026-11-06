@@ -50,7 +50,26 @@ function isPortableMode() {
   }
 }
 
-if (isPortableMode()) {
+/**
+ * 可选的共享数据目录：exe 旁边放 data-path.txt，第一行写目录路径。
+ * 桌面版和 U 盘版都指向同一个目录时，就能共用一份数据。
+ * 目录不存在时自动回退，避免换电脑后指向一个不存在的盘。
+ */
+function readSharedDataDir() {
+  try {
+    const cfg = path.join(exeDir(), 'data-path.txt');
+    if (!fs.existsSync(cfg)) return null;
+    const firstLine = fs.readFileSync(cfg, 'utf8').split(/\r?\n/)[0].trim();
+    if (!firstLine || firstLine.startsWith('#')) return null;
+    const expanded = firstLine.replace(/%([^%]+)%/g, (_, name) => process.env[name] || '');
+    const dir = path.isAbsolute(expanded) ? expanded : path.join(exeDir(), expanded);
+    return fs.existsSync(dir) ? dir : null;
+  } catch {
+    return null;
+  }
+}
+
+if (isPortableMode() && !readSharedDataDir()) {
   app.setPath('userData', path.join(exeDir(), 'runtime-data'));
 }
 
@@ -59,36 +78,41 @@ let mainWindow = null;
 
 function resolveDataDir() {
   if (process.env.ALIPAY_DATA_DIR) return path.resolve(process.env.ALIPAY_DATA_DIR);
+  const shared = readSharedDataDir();
+  if (shared) return shared;
   if (isPortableMode()) return path.join(exeDir(), 'data');
   if (app.isPackaged) return path.join(app.getPath('userData'), 'data');
   return path.join(PROJECT_ROOT, 'data');
 }
 
 /**
- * 首次运行时，如果固定目录还没有数据库、而 exe 旁边旧 data 目录有，
- * 就自动迁移过去（兼容之前“数据放在 exe 旁边”的版本）。
+ * 首次运行时目标目录没有数据，就从旧位置迁移一份过来：
+ * 依次尝试 exe 旁边的 data\ 和桌面版固定目录，挑数据更全的那份。
  */
 function migrateLegacyData(targetDir) {
   try {
     const targetDb = path.join(targetDir, 'app.db');
-    const legacyDb = path.join(exeDir(), 'data', 'app.db');
-    if (!fs.existsSync(legacyDb)) return;
+    const targetSize = fs.existsSync(targetDb) ? fs.statSync(targetDb).size : 0;
+    const appDataDb = process.env.APPDATA
+      ? path.join(process.env.APPDATA, 'AI Fund Tracker', 'data', 'app.db')
+      : null;
+    const candidates = [path.join(exeDir(), 'data', 'app.db'), appDataDb].filter(Boolean);
 
-    const targetExists = fs.existsSync(targetDb);
-    if (targetExists) {
-      const targetSize = fs.statSync(targetDb).size;
-      const legacySize = fs.statSync(legacyDb).size;
-      // 目标库只有空表（12KB）而旧库更大时，说明目标还没数据，直接用旧库覆盖
-      if (!(targetSize <= 12288 && legacySize > targetSize)) return;
-    }
+    for (const src of candidates) {
+      if (path.resolve(src) === path.resolve(targetDb)) continue;
+      if (!fs.existsSync(src)) continue;
+      const size = fs.statSync(src).size;
+      if (size <= 12288 || size <= targetSize) continue; // 空库或没更全，跳过
 
-    fs.mkdirSync(targetDir, { recursive: true });
-    fs.copyFileSync(legacyDb, targetDb);
-    const legacyBackups = path.join(exeDir(), 'data', 'backups');
-    if (fs.existsSync(legacyBackups)) {
-      fs.cpSync(legacyBackups, path.join(targetDir, 'backups'), { recursive: true });
+      fs.mkdirSync(targetDir, { recursive: true });
+      fs.copyFileSync(src, targetDb);
+      const legacyBackups = path.join(path.dirname(src), 'backups');
+      if (fs.existsSync(legacyBackups)) {
+        fs.cpSync(legacyBackups, path.join(targetDir, 'backups'), { recursive: true });
+      }
+      console.log(`[data] 已迁移数据库：${src} -> ${targetDb}`);
+      return;
     }
-    console.log(`[data] 已从旧目录迁移数据库：${legacyDb} -> ${targetDb}`);
   } catch (err) {
     console.warn('[data] 迁移旧数据失败:', err.message);
   }

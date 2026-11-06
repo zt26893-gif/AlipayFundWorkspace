@@ -25,7 +25,8 @@ if errorlevel 1 (
 
 set "REL=%~dp0release"
 if not exist "%REL%" mkdir "%REL%"
-if not exist "%REL%\data" mkdir "%REL%\data"
+if not exist "%~dp0data" mkdir "%~dp0data"
+if not exist "%REL%\data-path.txt" echo %~dp0data>"%REL%\data-path.txt"
 
 rem Seed initial database only on first deploy; never overwrite existing data
 if not exist "%REL%\data\app.db" (

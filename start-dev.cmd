@@ -7,7 +7,7 @@ set "PORT=%~1"
 if "%PORT%"=="" set "PORT=5173"
 
 rem Share the same database as the desktop app
-set "DATA_DIR=%APPDATA%\AI Fund Tracker\data"
+set "DATA_DIR=%~dp0data"
 if not exist "%DATA_DIR%" mkdir "%DATA_DIR%"
 
 echo.

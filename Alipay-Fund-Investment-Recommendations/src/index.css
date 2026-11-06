@@ -2571,3 +2571,18 @@ body {
   background: #ffffff;
   border-bottom-color: rgba(15, 23, 42, 0.08);
 }
+
+/* ===== 搜索按钮：避免被输入框挤压变形 ===== */
+.search-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+  min-width: 58px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+}
+
+.search-input {
+  min-width: 0;
+}
