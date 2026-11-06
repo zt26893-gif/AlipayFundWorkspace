@@ -3,12 +3,16 @@
  * 基金搜索、基金池列表管理
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import useFundStore from '../../store/useFundStore';
+import useSettingsStore from '../../store/useSettingsStore';
+import { translate } from '../../i18n';
 import { searchFund, fetchFundInfo } from '../../services/fundService';
 
-export default function Sidebar() {
+export default function Sidebar({ onOpenSettings }) {
   const { funds, selectedFundCode, addFund, removeFund, selectFund } = useFundStore();
+  const language = useSettingsStore((s) => s.language);
+  const t = useMemo(() => (key, vars) => translate(language, key, vars), [language]);
   const [searchCode, setSearchCode] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -57,7 +61,7 @@ export default function Sidebar() {
         <button
           className="sidebar-toggle"
           onClick={() => setCollapsed(false)}
-          title="展开侧边栏"
+          title={t('sidebar.expand')}
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M7 4L13 10L7 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -73,6 +77,16 @@ export default function Sidebar() {
             />
           ))}
         </div>
+        <button
+          className="sidebar-settings-btn is-collapsed"
+          onClick={onOpenSettings}
+          title={t('actions.settings')}
+        >
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <circle cx="10" cy="10" r="2.6" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M10 2.2v2M10 15.8v2M2.2 10h2M15.8 10h2M4.5 4.5l1.4 1.4M14.1 14.1l1.4 1.4M15.5 4.5l-1.4 1.4M5.9 14.1l-1.4 1.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </button>
       </aside>
     );
   }
@@ -88,12 +102,12 @@ export default function Sidebar() {
             <rect x="1" y="11" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
             <rect x="11" y="11" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
           </svg>
-          我的基金池
+          {t('sidebar.title')}
         </h2>
         <button
           className="sidebar-toggle"
           onClick={() => setCollapsed(true)}
-          title="折叠侧边栏"
+          title={t('sidebar.collapseTitle')}
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -111,14 +125,14 @@ export default function Sidebar() {
           <input
             type="text"
             className="search-input"
-            placeholder="输入基金代码/名称，如 022364"
+            placeholder={t('sidebar.searchPlaceholder')}
             value={searchCode}
             onChange={(e) => setSearchCode(e.target.value)}
             onKeyDown={handleKeyDown}
             maxLength={30}
           />
           <button className="search-btn" onClick={handleSearch} disabled={isSearching}>
-            {isSearching ? '...' : '搜索'}
+            {isSearching ? '...' : t('sidebar.search')}
           </button>
         </div>
 
@@ -126,7 +140,7 @@ export default function Sidebar() {
         {showResults && (
           <div className="search-results">
             {searchResults.length === 0 && !isSearching ? (
-              <div className="search-empty">未找到相关基金</div>
+              <div className="search-empty">{t('sidebar.noResult')}</div>
             ) : (
               searchResults.map((result) => {
                 const isAdded = funds.some((f) => f.code === result.code);
@@ -141,7 +155,7 @@ export default function Sidebar() {
                       onClick={() => !isAdded && handleAdd(result.code)}
                       disabled={isAdded}
                     >
-                      {isAdded ? '已添加' : '+ 添加'}
+                      {isAdded ? t('sidebar.added') : t('sidebar.add')}
                     </button>
                   </div>
                 );
@@ -151,7 +165,7 @@ export default function Sidebar() {
               className="search-close-btn"
               onClick={() => setShowResults(false)}
             >
-              收起
+              {t('sidebar.collapse')}
             </button>
           </div>
         )}
@@ -165,8 +179,8 @@ export default function Sidebar() {
               <rect x="8" y="8" width="32" height="32" rx="8" stroke="currentColor" strokeWidth="2" />
               <path d="M20 24H28M24 20V28" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
-            <p>暂无基金</p>
-            <p className="text-xs opacity-50">搜索并添加基金到你的关注池</p>
+            <p>{t('sidebar.empty')}</p>
+            <p className="text-xs opacity-50">{t('sidebar.emptyHint')}</p>
           </div>
         ) : (
           funds.map((fund) => (
@@ -180,7 +194,7 @@ export default function Sidebar() {
                 <button
                   className="fund-remove-btn"
                   onClick={(e) => handleRemove(e, fund.code)}
-                  title="移除基金"
+                  title={t('sidebar.remove')}
                 >
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                     <path d="M4 4L10 10M10 4L4 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -205,13 +219,26 @@ export default function Sidebar() {
       {/* 底部统计 */}
       {funds.length > 0 && (
         <div className="sidebar-footer">
-          <span>共 {funds.length} 只基金</span>
+          <span>{t('sidebar.total', { n: funds.length })}</span>
           <span className="text-xs opacity-60">
-            {funds.filter((f) => f.dailyChange >= 0).length} 涨 /{' '}
-            {funds.filter((f) => f.dailyChange < 0).length} 跌
+            {t('sidebar.riseFall', {
+              u: funds.filter((f) => f.dailyChange >= 0).length,
+              d: funds.filter((f) => f.dailyChange < 0).length,
+            })}
           </span>
         </div>
       )}
+
+      {/* 设置入口 */}
+      <div className="sidebar-bottom">
+        <button className="sidebar-settings-btn" onClick={onOpenSettings}>
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <circle cx="10" cy="10" r="2.6" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M10 2.2v2M10 15.8v2M2.2 10h2M15.8 10h2M4.5 4.5l1.4 1.4M14.1 14.1l1.4 1.4M15.5 4.5l-1.4 1.4M5.9 14.1l-1.4 1.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          <span>{t('actions.settings')}</span>
+        </button>
+      </div>
     </aside>
   );
 }

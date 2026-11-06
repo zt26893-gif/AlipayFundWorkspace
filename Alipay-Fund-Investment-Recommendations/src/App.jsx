@@ -4,9 +4,10 @@
  * Main Content 包含：基金详情 + 图表 + 持仓面板 + AI 策略
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Header from './components/layout/Header';
 import Sidebar from './components/layout/Sidebar';
+import SettingsModal from './components/settings/SettingsModal';
 import FundDetailHeader from './components/detail/FundDetailHeader';
 import FundChart from './components/chart/FundChart';
 import PortfolioPanel from './components/portfolio/PortfolioPanel';
@@ -14,6 +15,8 @@ import StrategyPanel from './components/strategy/StrategyPanel';
 import OverviewPanel from './components/overview/OverviewPanel';
 import useFundStore from './store/useFundStore';
 import useTradeStore from './store/useTradeStore';
+import useSettingsStore from './store/useSettingsStore';
+import { translate } from './i18n';
 import { fetchFundInfo } from './services/fundService';
 
 // 预置默认基金列表（首次使用）
@@ -22,8 +25,11 @@ const DEFAULT_FUNDS = ['000001', '161725', '005827'];
 export default function App() {
   const { funds, selectedFundCode, addFund } = useFundStore();
   const transactions = useTradeStore((s) => s.transactions);
+  const language = useSettingsStore((s) => s.language);
+  const t = useMemo(() => (key, vars) => translate(language, key, vars), [language]);
   // 视图切换：detail = 单只基金详情，overview = 组合趋势总览
   const [view, setView] = useState('detail');
+  const [showSettings, setShowSettings] = useState(false);
 
   // 临时：强制清理用户的错误脏数据（5.5246 成本价），避免用户误会算法错误
   useEffect(() => {
@@ -70,14 +76,14 @@ export default function App() {
     <div className="app-container">
       <Header />
       <div className="app-body">
-        <Sidebar />
+        <Sidebar onOpenSettings={() => setShowSettings(true)} />
         <main className="main-content">
           <div className="view-switcher">
             <button
               className={`view-btn ${view === 'detail' ? 'active' : ''}`}
               onClick={() => setView('detail')}
             >
-              单只基金
+              {t('tabs.single')}
             </button>
             <button
               className={`view-btn ${view === 'overview' ? 'active' : ''}`}
@@ -86,7 +92,7 @@ export default function App() {
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                 <path d="M2 13V9M6 13V5M10 13V7M14 13V3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
               </svg>
-              趋势总览
+              {t('tabs.overview')}
             </button>
           </div>
 
@@ -117,6 +123,7 @@ export default function App() {
           )}
         </main>
       </div>
+      {showSettings ? <SettingsModal onClose={() => setShowSettings(false)} /> : null}
     </div>
   );
 }

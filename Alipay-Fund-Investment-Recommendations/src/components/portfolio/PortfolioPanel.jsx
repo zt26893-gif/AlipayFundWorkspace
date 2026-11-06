@@ -12,6 +12,8 @@ import DataModal from './DataModal';
 import DCAConfigModal from './DCAConfigModal';
 import TransactionHistory from './TransactionHistory';
 import { calcAvgHoldingDays, isTxConfirmed } from '../../utils/tradeEngine';
+import useSettingsStore from '../../store/useSettingsStore';
+import { translate } from '../../i18n';
 import './portfolio-extra.css';
 
 /**
@@ -68,6 +70,8 @@ function PendingOrders({ txs, fundCode }) {
 }
 
 export default function PortfolioPanel({ fund }) {
+  const language = useSettingsStore((s) => s.language);
+  const t = useMemo(() => (key, vars) => translate(language, key, vars), [language]);
   const [showTradeModal, setShowTradeModal] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [showFeeModal, setShowFeeModal] = useState(false);
@@ -160,11 +164,11 @@ export default function PortfolioPanel({ fund }) {
         </h3>
         <div className="portfolio-actions">
           <button className="portfolio-action-btn btn-buy-small" onClick={openBuy}>
-            买入
+            {t('actions.buy')}
           </button>
           {hasPosition && (
             <button className="portfolio-action-btn btn-sell-small" onClick={openSell}>
-              卖出
+              {t('actions.sell')}
             </button>
           )}
           {hasPosition && (
@@ -172,7 +176,7 @@ export default function PortfolioPanel({ fund }) {
               className="portfolio-action-btn btn-convert-small"
               onClick={() => setShowConvertModal(true)}
             >
-              转换
+              {t('actions.convert')}
             </button>
           )}
           <button
@@ -180,14 +184,14 @@ export default function PortfolioPanel({ fund }) {
             onClick={() => setShowFeeModal(true)}
             title="费率设置：可手动校准申购费、赎回费"
           >
-            费率
+            {t('actions.fee')}
           </button>
           <button
             className="portfolio-action-btn btn-fee-small"
             onClick={() => setShowDataModal(true)}
             title="数据备份：导出 / 导入本地数据库"
           >
-            数据
+            {t('actions.data')}
           </button>
         </div>
       </div>

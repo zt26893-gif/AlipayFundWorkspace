@@ -4,7 +4,7 @@
  * 实时计算手续费、预估份额/到账金额
  */
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import useTradeStore from '../../store/useTradeStore';
 import useFeeStore from '../../store/useFeeStore';
 import {
@@ -15,8 +15,17 @@ import {
   isTxConfirmed,
 } from '../../utils/tradeEngine';
 import { fetchFundHistory } from '../../services/fundService';
+import { recognizeTradeImage } from '../../services/visionService';
+import useSettingsStore from '../../store/useSettingsStore';
+import { translate } from '../../i18n';
 
 export default function TradeModal({ fund, onClose, initialTab = 'buy' }) {
+  const language = useSettingsStore((s) => s.language);
+  const t = useMemo(() => (key, vars) => translate(language, key, vars), [language]);
+  const fileRef = useRef(null);
+  const [recognizing, setRecognizing] = useState(false);
+  const [ocrMsg, setOcrMsg] = useState('');
+  const [ocrError, setOcrError] = useState(false);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [buyAmount, setBuyAmount] = useState('');
   const [sellSharesInput, setSellSharesInput] = useState('');
@@ -140,6 +149,39 @@ export default function TradeModal({ fund, onClose, initialTab = 'buy' }) {
     setSellSharesInput(availableShares.toString());
   };
 
+  // 截图识别：调用设置里的视觉模型，解析后回填表单
+  const handlePickImage = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    setRecognizing(true);
+    setOcrMsg('');
+    setOcrError(false);
+    try {
+      const r = await recognizeTradeImage(file);
+      if (r.fundCode && fund?.code && String(r.fundCode) !== String(fund.code)) {
+        setOcrMsg(t('recognize.noFund', { code: r.fundCode }));
+        setOcrError(true);
+        return;
+      }
+      if (r.type === 'sell') setActiveTab('sell');
+      else setActiveTab('buy');
+      if (r.amount != null) setBuyAmount(String(r.amount));
+      if (r.shares != null) setSellSharesInput(String(r.shares));
+      if (r.orderTime) {
+        const dt = String(r.orderTime).replace(' ', 'T').slice(0, 16);
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dt)) setOrderTime(dt);
+      }
+      setOcrMsg(t('recognize.fillHint'));
+    } catch (err) {
+      if (err.code === 'NO_VISION_CONFIG') setOcrMsg(t('recognize.needConfig'));
+      else setOcrMsg(`${t('recognize.failed')}: ${err.message}`);
+      setOcrError(true);
+    } finally {
+      setRecognizing(false);
+    }
+  };
+
   // 快捷金额按钮
   const quickAmounts = [100, 500, 1000, 5000, 10000];
 
@@ -165,14 +207,34 @@ export default function TradeModal({ fund, onClose, initialTab = 'buy' }) {
             className={`trade-tab ${activeTab === 'buy' ? 'active tab-buy' : ''}`}
             onClick={() => setActiveTab('buy')}
           >
-            买入
+            {t('actions.buy')}
           </button>
           <button
             className={`trade-tab ${activeTab === 'sell' ? 'active tab-sell' : ''}`}
             onClick={() => setActiveTab('sell')}
           >
-            卖出
+            {t('actions.sell')}
           </button>
+        </div>
+
+        <div className="trade-ocr-bar">
+          <button
+            type="button"
+            className="trade-ocr-btn"
+            onClick={() => fileRef.current && fileRef.current.click()}
+            disabled={recognizing}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <rect x="1.5" y="2.5" width="13" height="11" rx="2" stroke="currentColor" strokeWidth="1.3" />
+              <circle cx="5.5" cy="6" r="1.2" stroke="currentColor" strokeWidth="1.2" />
+              <path d="M2.5 11.5L6 8.5L8.5 10.5L10.5 9L13.5 11.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span>{recognizing ? t('recognize.parsing') : t('recognize.button')}</span>
+          </button>
+          <input ref={fileRef} type="file" accept="image/*" hidden onChange={handlePickImage} />
+          {ocrMsg ? (
+            <span className={`trade-ocr-msg ${ocrError ? 'is-error' : ''}`}>{ocrMsg}</span>
+          ) : null}
         </div>
 
         {/* 当前净值 / 历史确认日净值 */}

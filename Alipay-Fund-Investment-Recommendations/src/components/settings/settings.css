@@ -1,0 +1,187 @@
+/* ===== 设置弹窗 ===== */
+.settings-modal {
+  width: min(660px, 92vw);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.settings-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 24px 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.settings-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.settings-subtitle {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.settings-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.settings-close:hover {
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.settings-body {
+  padding: 18px 24px 8px;
+  overflow-y: auto;
+}
+
+.settings-section {
+  margin-bottom: 22px;
+}
+
+.settings-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.settings-beta {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.settings-options {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.settings-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.settings-option:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.settings-option.active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--color-accent), #8b5cf6);
+  border-color: transparent;
+  box-shadow: var(--shadow-glow);
+}
+
+.settings-option-icon {
+  display: inline-flex;
+}
+
+.settings-hint {
+  margin-bottom: 10px;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+}
+
+.settings-field-wide {
+  grid-column: 1 / -1;
+}
+
+.settings-input {
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  outline: none;
+}
+
+.settings-input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-bg);
+}
+
+.settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 24px 18px;
+  border-top: 1px solid var(--border-color);
+}
+
+.settings-saved {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.settings-done {
+  padding: 9px 22px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, var(--color-accent), #8b5cf6);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.settings-done:hover {
+  filter: brightness(1.08);
+}
+
+/* 亮色主题下的选项 */
+:root[data-theme='light'] .settings-option {
+  background: #fff;
+}

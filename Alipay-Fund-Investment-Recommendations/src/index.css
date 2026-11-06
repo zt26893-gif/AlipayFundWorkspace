@@ -2453,3 +2453,121 @@ body {
   color: var(--color-rise);
 }
 
+
+/* =============================================
+   亮色主题（data-theme="light"）
+   ============================================= */
+:root[data-theme='light'] {
+  --bg-primary: #f4f5fa;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f3f4fb;
+  --bg-sidebar: #ffffff;
+  --border-color: rgba(15, 23, 42, 0.08);
+  --border-hover: rgba(99, 102, 241, 0.35);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-accent: #6d28d9;
+  --color-accent-bg: rgba(99, 102, 241, 0.1);
+  --shadow-card: 0 6px 24px rgba(15, 23, 42, 0.08);
+  --shadow-glow: 0 0 18px rgba(99, 102, 241, 0.16);
+}
+
+:root[data-theme='light'] body {
+  background: var(--bg-primary);
+}
+
+:root[data-theme='light'] .modal-overlay {
+  background: rgba(15, 23, 42, 0.35);
+}
+
+:root[data-theme='light'] .modal-container,
+:root[data-theme='light'] .trade-modal {
+  background: #ffffff;
+}
+
+:root[data-theme='light'] .trade-input,
+:root[data-theme='light'] .convert-select,
+:root[data-theme='light'] .search-input,
+:root[data-theme='light'] .inline-rate-input,
+:root[data-theme='light'] .inline-fee-input {
+  background: #ffffff;
+  color: var(--text-primary);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+:root[data-theme='light'] .trade-preview,
+:root[data-theme='light'] .preview {
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme='light'] .preview-row-highlight {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+:root[data-theme='light'] .portfolio-hero-card {
+  background: linear-gradient(135deg, #ffffff, #eef2ff);
+}
+
+:root[data-theme='light'] .ov-card {
+  background: #ffffff;
+}
+/* ===== 侧边栏设置入口 ===== */
+.sidebar-bottom {
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.sidebar-settings-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.sidebar-settings-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+  background: var(--bg-card-hover);
+}
+
+.sidebar-settings-btn.is-collapsed {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin: 8px auto 12px;
+  flex-shrink: 0;
+}
+
+:root[data-theme='light'] .sidebar-settings-btn {
+  background: #fff;
+}
+
+:root[data-theme='light'] .trade-tabs {
+  background: #eef1f8;
+}
+
+:root[data-theme='light'] .trade-tab.active.tab-buy {
+  background: #ffffff;
+}
+
+:root[data-theme='light'] .trade-tab.active.tab-sell {
+  background: #ffffff;
+}
+
+:root[data-theme='light'] .modal-header {
+  background: #ffffff;
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+}

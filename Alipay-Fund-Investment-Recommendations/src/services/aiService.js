@@ -15,6 +15,7 @@ import {
   ALERT_THRESHOLDS,
 } from '../data/mockData';
 import { buildLocalOverviewStrategy } from '../utils/overviewEngine';
+import useSettingsStore from '../store/useSettingsStore';
 
 // ===== DeepSeek 配置 =====
 const DEEPSEEK_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY || '';
@@ -24,8 +25,17 @@ const DEEPSEEK_MODEL = import.meta.env.VITE_DEEPSEEK_MODEL || 'deepseek-chat';
 /**
  * 判断是否已配置 DeepSeek API Key
  */
+export function getLLMConfig() {
+  const aiCfg = useSettingsStore.getState().ai || {};
+  if (aiCfg.baseUrl && aiCfg.apiKey && aiCfg.chatModel) {
+    return { baseUrl: aiCfg.baseUrl, apiKey: aiCfg.apiKey, model: aiCfg.chatModel, custom: true };
+  }
+  return { baseUrl: DEEPSEEK_BASE_URL, apiKey: DEEPSEEK_API_KEY, model: DEEPSEEK_MODEL, custom: false };
+}
+
 export function isLLMConfigured() {
-  return DEEPSEEK_API_KEY && DEEPSEEK_API_KEY !== 'sk-your-deepseek-api-key-here';
+  const cfg = getLLMConfig();
+  return !!cfg.apiKey && cfg.apiKey !== 'sk-your-deepseek-api-key-here';
 }
 
 /**
@@ -37,7 +47,29 @@ export function isLLMConfigured() {
  */
 async function callDeepSeek(systemPrompt, userPrompt, maxTokens = 800) {
   try {
-    const response = await fetch('/api/deepseek/v1/chat/completions', {
+    const cfg = getLLMConfig();
+    const payload = {
+      model: cfg.model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.7,
+      max_tokens: maxTokens,
+    };
+    const response = await fetch(
+      cfg.custom ? '/api/llm' : '/api/deepseek/v1/chat/completions',
+      cfg.custom
+        ? {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url: cfg.baseUrl.replace(/\/+$/, '') + '/chat/completions',
+              headers: { Authorization: `Bearer ${cfg.apiKey}` },
+              body: payload,
+            }),
+          }
+        : {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -278,6 +278,31 @@ const server = createServer(async (req, res) => {
     }
   }
 
+  // ---- 通用 LLM 代理（设置里自定义 Base URL / Key 时使用）----
+  if (pathname === '/api/llm' && req.method === 'POST') {
+    try {
+      const payload = JSON.parse(await readBody(req, 25 * 1024 * 1024));
+      const target = payload.url;
+      if (!target || !/^https?:\/\//i.test(target)) {
+        return sendJson(res, 400, { ok: false, error: 'invalid url' });
+      }
+      const headers = { 'Content-Type': 'application/json', ...(payload.headers || {}) };
+      const upstream = await fetch(target, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload.body ?? {}),
+      });
+      const text = await upstream.text();
+      res.writeHead(upstream.status, {
+        'Content-Type': upstream.headers.get('content-type') || 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+      });
+      return res.end(text);
+    } catch (err) {
+      return sendJson(res, 502, { ok: false, error: err.message });
+    }
+  }
+
   // ---- 外部接口代理 ----
   const proxy = PROXIES.find((p) => pathname.startsWith(`${p.prefix}/`) || pathname === p.prefix);
   if (proxy) return handleProxy(req, res, proxy);
