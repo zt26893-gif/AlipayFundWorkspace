@@ -23,6 +23,10 @@ smoke*.png
 Thumbs.db
 desktop.ini
 
-# ===== U �̴������ =====
+# ===== U �̴������ =====
 usb-package/
 
+
+# ===== 打包中间产物与数据库备份 =====
+.build/
+db-backups/

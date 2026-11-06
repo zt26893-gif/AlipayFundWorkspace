@@ -40,7 +40,7 @@
     "productName": "AI Fund Tracker",
     "asar": false,
     "directories": {
-      "output": "../release",
+      "output": "../.build",
       "buildResources": "build"
     },
     "files": [

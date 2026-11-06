@@ -5,12 +5,12 @@ cd /d "%~dp0"
 set "PORT=8787"
 
 if not exist "dist\index.html" (
-  echo [ERROR] Frontend not built. Run build-app.cmd first.
+  echo [ERROR] frontend not built. Run build-app.cmd first.
   pause
   exit /b 1
 )
 
-rem 优先使用工作区内的便携 Node（..\runtime\node），找不到再回退系统 Node
+rem Prefer portable node from the workspace runtime folder, fallback to system node
 set "NODE_EXE=..\runtime\node\node.exe"
 if not exist "%NODE_EXE%" set "NODE_EXE=node"
 

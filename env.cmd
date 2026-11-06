@@ -1,9 +1,6 @@
 @echo off
-rem ============================================================
-rem  项目内隔离环境（类似 Python venv）
-rem  只把 runtime\ 下的 Node / Git 加进 PATH，不依赖系统安装
-rem  用法：call env.cmd  然后直接用 node / npm / git
-rem ============================================================
+rem Project-local isolated environment (like a venv).
+rem Puts runtime\node and runtime\git first on PATH and keeps npm cache inside the project.
 set "AF_ROOT=%~dp0"
 if "%AF_ROOT:~-1%"=="\" set "AF_ROOT=%AF_ROOT:~0,-1%"
 
@@ -13,12 +10,10 @@ set "AF_GIT=%AF_ROOT%\runtime\git\cmd"
 if exist "%AF_NODE%\node.exe" (
   set "PATH=%AF_NODE%;%PATH%"
 ) else (
-  echo [WARN] 未找到项目内 Node：%AF_NODE%\node.exe，将回退到系统 Node
+  echo [WARN] portable node not found: %AF_NODE%\node.exe - falling back to system node
 )
-
 if exist "%AF_GIT%\git.exe" set "PATH=%AF_GIT%;%PATH%"
 
-rem npm 缓存与全局目录也收进项目内，换电脑不污染系统
 set "npm_config_cache=%AF_ROOT%\.npm-cache"
 set "npm_config_prefix=%AF_ROOT%\runtime\npm-global"
 set "ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/"

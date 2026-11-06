@@ -1,23 +1,27 @@
 @echo off
-chcp 65001 >nul
 setlocal
 call "%~dp0env.cmd"
 cd /d "%~dp0Alipay-Fund-Investment-Recommendations"
 
-set "PORT=%~1"
+set "PORT="
+if /i not "%~1"=="nobrowser" set "PORT=%~1"
 if "%PORT%"=="" set "PORT=8787"
 
+rem Share the same database as the desktop app
+set "DATA_DIR=%CD%\..\release\data"
+if not exist "%DATA_DIR%" mkdir "%DATA_DIR%"
+
 if not exist "dist\index.html" (
-  echo [ERROR] 前端尚未构建，请先运行 build-app.cmd
+  echo [ERROR] frontend not built. Run build-app.cmd first.
   pause
   exit /b 1
 )
 
 echo.
-echo   AI Fund Tracker - 浏览器模式
+echo   AI Fund Tracker - browser mode
 echo   URL: http://127.0.0.1:%PORT%
-echo   数据库: data\app.db
-echo   关闭本窗口即停止服务
+echo   Database: ..\release\data\app.db
+echo   Close this window to stop.
 echo.
 
 if /i "%~1"=="nobrowser" goto runserver
