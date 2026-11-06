@@ -17,6 +17,7 @@ import {
   calcNavDate,
   calcConfirmDate,
   isTxConfirmed,
+  getSellTierInfo,
   CONVERT_ROUNDING,
 } from '../../utils/tradeEngine';
 import { fetchFundHistory } from '../../services/fundService';
@@ -271,6 +272,11 @@ export default function ConvertModal({ fund, onClose }) {
   // 当前持有天数命中哪一档赎回费，行内改费率时就直接改这一档
   const redeemTierIndex = fromCfg.sellTiers.findIndex(
     (t) => holdingDays >= t.minDays && holdingDays < t.maxDays
+  );
+
+  const redeemTierInfo = useMemo(
+    () => getSellTierInfo(holdingDays, fromCfg.sellTiers),
+    [holdingDays, fromCfg.sellTiers]
   );
 
   // 三种零头处理方式各自算一遍：既能展示差异，也能判断哪种可行

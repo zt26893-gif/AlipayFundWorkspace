@@ -339,10 +339,18 @@ export default function PortfolioPanel({ fund }) {
                   <div className="dca-detail-row">
                     <span className="dca-label">定投周期</span>
                     <span className="dca-value">
-                      {dcaPlan.frequency === 'weekly' ? '每周' : dcaPlan.frequency === 'biweekly' ? '每两周' : '每月'}
-                      {dcaPlan.frequency === 'weekly' || dcaPlan.frequency === 'biweekly'
-                        ? `（周${['日','一','二','三','四','五','六'][dcaPlan.dayOfWeek]}）`
-                        : `（${dcaPlan.dayOfMonth}号）`}
+                      {dcaPlan.frequency === 'daily'
+                        ? '每日'
+                        : dcaPlan.frequency === 'weekly'
+                          ? '每周'
+                          : dcaPlan.frequency === 'biweekly'
+                            ? '每两周'
+                            : '每月'}
+                      {dcaPlan.frequency === 'daily'
+                        ? ''
+                        : dcaPlan.frequency === 'weekly' || dcaPlan.frequency === 'biweekly'
+                          ? `（周${['日','一','二','三','四','五','六'][dcaPlan.dayOfWeek]}）`
+                          : `（${dcaPlan.dayOfMonth}号）`}
                     </span>
                   </div>
                   <div className="dca-action-tip">

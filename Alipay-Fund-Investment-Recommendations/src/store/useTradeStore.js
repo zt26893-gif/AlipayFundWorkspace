@@ -22,16 +22,17 @@ import {
 function loadTrades() {
   try {
     const data = localStorage.getItem('fund-trades');
-    if (!data) return { transactions: [], dcaPlans: [], cashBalance: 0 };
+    if (!data) return { transactions: [], dcaPlans: [], cashBalance: 0, audit: [] };
     const parsed = JSON.parse(data);
     return {
       transactions: parsed.transactions || [],
       dcaPlans: parsed.dcaPlans || [],
+      audit: parsed.audit || [],
       // 转换零头留下的剩余资金，旧数据没有这个字段时按 0 处理
       cashBalance: Number(parsed.cashBalance) || 0,
     };
   } catch {
-    return { transactions: [], dcaPlans: [], cashBalance: 0 };
+    return { transactions: [], dcaPlans: [], cashBalance: 0, audit: [] };
   }
 }
 
@@ -43,6 +44,7 @@ function saveTrades(state) {
         transactions: state.transactions,
         dcaPlans: state.dcaPlans,
         cashBalance: state.cashBalance,
+        audit: state.audit || [],
       })
     );
   } catch (e) {
@@ -60,6 +62,7 @@ const useTradeStore = create((set, get) => {
     transactions: initial.transactions,
     dcaPlans: initial.dcaPlans,
     cashBalance: initial.cashBalance,
+    audit: initial.audit || [],
 
     // ===== 买入 =====
 
@@ -101,6 +104,7 @@ const useTradeStore = create((set, get) => {
         const newState = {
           transactions: [...s.transactions, tx],
           dcaPlans: s.dcaPlans,
+          audit: s.audit || [],
         };
         saveTrades(newState);
         return newState;
@@ -162,6 +166,7 @@ const useTradeStore = create((set, get) => {
         const newState = {
           transactions: [...s.transactions, tx],
           dcaPlans: s.dcaPlans,
+          audit: s.audit || [],
         };
         saveTrades(newState);
         return newState;
@@ -265,6 +270,7 @@ const useTradeStore = create((set, get) => {
         const newState = {
           transactions: [...s.transactions, tx],
           dcaPlans: s.dcaPlans,
+          audit: s.audit || [],
           cashBalance: Math.max(0, parseFloat(((s.cashBalance || 0) + cashDelta).toFixed(2))),
         };
         saveTrades(newState);
@@ -348,7 +354,7 @@ const useTradeStore = create((set, get) => {
         } else {
           newPlans = [...s.dcaPlans, { id: generateId(), ...plan }];
         }
-        const newState = { transactions: s.transactions, dcaPlans: newPlans };
+        const newState = { transactions: s.transactions, dcaPlans: newPlans, audit: s.audit || [] };
         saveTrades(newState);
         return newState;
       });
@@ -369,6 +375,7 @@ const useTradeStore = create((set, get) => {
         const newState = {
           transactions: s.transactions,
           dcaPlans: s.dcaPlans.filter((p) => p.fundCode !== fundCode),
+          audit: s.audit || [],
         };
         saveTrades(newState);
         return newState;
@@ -409,10 +416,79 @@ const useTradeStore = create((set, get) => {
      */
     removeTransaction: (txId) => {
       set((s) => {
+        const target = s.transactions.find((tx) => tx.id === txId);
+        const audit = [
+          ...(s.audit || []),
+          {
+            id: generateId(),
+            at: new Date().toISOString(),
+            action: 'delete',
+            txId,
+            fundCode: target?.fundCode || '',
+            fundName: target?.fundName || '',
+            type: target?.type || '',
+            changes: {},
+            snapshot: target || null,
+          },
+        ];
         const newState = {
           transactions: s.transactions.filter((tx) => tx.id !== txId),
           dcaPlans: s.dcaPlans,
+          cashBalance: s.cashBalance,
+          audit,
         };
+        saveTrades(newState);
+        return newState;
+      });
+    },
+
+    /**
+     * 编辑一条交易，并记录修改审计
+     */
+    updateTransaction: (txId, patch) => {
+      set((s) => {
+        const idx = s.transactions.findIndex((tx) => tx.id === txId);
+        if (idx < 0) return {};
+        const before = s.transactions[idx];
+        const after = { ...before, ...patch };
+
+        // 买卖记录按金额/份额重算净额
+        if (after.type === 'buy') {
+          const amount = Number(after.amount) || 0;
+          const fee = Number(after.fee) || 0;
+          after.netAmount = parseFloat((amount - fee).toFixed(2));
+        } else if (after.type === 'sell') {
+          const shares = Number(after.shares) || 0;
+          const nav = Number(after.nav) || 0;
+          const fee = Number(after.fee) || 0;
+          after.amount = parseFloat((shares * nav).toFixed(2));
+          after.netAmount = parseFloat((shares * nav - fee).toFixed(2));
+        }
+
+        const changes = {};
+        for (const key of Object.keys(patch)) {
+          if (String(before[key]) !== String(after[key])) {
+            changes[key] = { from: before[key], to: after[key] };
+          }
+        }
+
+        const audit = [
+          ...(s.audit || []),
+          {
+            id: generateId(),
+            at: new Date().toISOString(),
+            action: 'update',
+            txId,
+            fundCode: after.fundCode,
+            fundName: after.fundName,
+            type: after.type,
+            changes,
+          },
+        ];
+
+        const transactions = [...s.transactions];
+        transactions[idx] = after;
+        const newState = { transactions, dcaPlans: s.dcaPlans, cashBalance: s.cashBalance, audit };
         saveTrades(newState);
         return newState;
       });
@@ -426,6 +502,7 @@ const useTradeStore = create((set, get) => {
         const newState = {
           transactions: s.transactions.filter((tx) => tx.fundCode !== fundCode),
           dcaPlans: s.dcaPlans,
+          audit: s.audit || [],
         };
         saveTrades(newState);
         return newState;

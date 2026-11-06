@@ -53,6 +53,25 @@ export function getSellFeeRate(holdingDays, tiers = SELL_FEE_TIERS) {
 }
 
 /**
+ * 找出「再持有几天就降档」的信息，用于赎回费临界提醒
+ * @param {number} holdingDays
+ * @param {Array} tiers
+ * @returns {{current:Object,next:Object,daysToNext:number,rateDrop:number}|null}
+ */
+export function getSellTierInfo(holdingDays, tiers = SELL_FEE_TIERS) {
+  const idx = tiers.findIndex(
+    (tier) => holdingDays >= tier.minDays && holdingDays < tier.maxDays
+  );
+  if (idx < 0 || idx + 1 >= tiers.length) return null;
+  const current = tiers[idx];
+  const next = tiers[idx + 1];
+  if (!next || next.rate >= current.rate) return null;
+  const daysToNext = Math.ceil(next.minDays - holdingDays);
+  if (!Number.isFinite(daysToNext) || daysToNext <= 0) return null;
+  return { current, next, daysToNext, rateDrop: current.rate - next.rate };
+}
+
+/**
  * 计算赎回手续费
  * 赎回手续费 = 赎回份额 × 赎回日净值 × 赎回费率
  * @param {number} shares - 赎回份额

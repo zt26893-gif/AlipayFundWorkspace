@@ -13,6 +13,7 @@ import {
   getSellFeeRate,
   calcNavDate,
   isTxConfirmed,
+  getSellTierInfo,
 } from '../../utils/tradeEngine';
 import { fetchFundHistory } from '../../services/fundService';
 import { recognizeTradeImage } from '../../services/visionService';
@@ -181,6 +182,11 @@ export default function TradeModal({ fund, onClose, initialTab = 'buy' }) {
       setRecognizing(false);
     }
   };
+
+  const tierInfo = useMemo(
+    () => (sellPreview ? getSellTierInfo(sellPreview.holdingDays, feeConfig.sellTiers) : null),
+    [sellPreview, feeConfig.sellTiers]
+  );
 
   // 快捷金额按钮
   const quickAmounts = [100, 500, 1000, 5000, 10000];
@@ -432,7 +438,16 @@ export default function TradeModal({ fund, onClose, initialTab = 'buy' }) {
                   </div>
                 )}
 
-                {sellPreview && sellPreview.holdingDays < 7 && (
+                {sellPreview && tierInfo && tierInfo.daysToNext <= 60 && (
+                  <p className="trade-tip fee-tier-hint">
+                    ⏳ 再持有 <b>{tierInfo.daysToNext}</b> 天，赎回费率从{' '}
+                    {(tierInfo.current.rate * 100).toFixed(2)}% 降至{' '}
+                    {(tierInfo.next.rate * 100).toFixed(2)}%，可省{' '}
+                    <b>¥{(sellPreview.shares * resolvedNav * tierInfo.rateDrop).toFixed(2)}</b>
+                  </p>
+                )}
+
+                {sellPreview && sellPreview.holdingDays < 7 && !tierInfo && (
                   <p className="trade-tip trade-tip-warning">
                     ⚠️ 持有不满 7 天，赎回费率为 1.50%（惩罚性费率），建议持有超过 7 天再卖出
                   </p>

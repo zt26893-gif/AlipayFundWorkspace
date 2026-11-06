@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import useTradeStore from '../../store/useTradeStore';
 
 const FREQUENCY_OPTIONS = [
+  { value: 'daily', label: '每日' },
   { value: 'weekly', label: '每周' },
   { value: 'biweekly', label: '每两周' },
   { value: 'monthly', label: '每月' },
@@ -49,6 +50,9 @@ export default function DCAConfigModal({ fund, onClose }) {
     });
     onClose();
   };
+
+  const timesPerYear =
+    frequency === 'daily' ? 250 : frequency === 'weekly' ? 52 : frequency === 'biweekly' ? 26 : 12;
 
   const handleDelete = () => {
     if (window.confirm('确定取消该基金的定投计划？')) {
@@ -110,9 +114,13 @@ export default function DCAConfigModal({ fund, onClose }) {
           {/* 执行日选择 */}
           <div className="dca-field">
             <label className="dca-label">
-              {frequency === 'monthly' ? '每月扣款日' : '每周扣款日'}
+              {frequency === 'daily' ? '扣款日' : frequency === 'monthly' ? '每月扣款日' : '每周扣款日'}
             </label>
-            {frequency === 'monthly' ? (
+            {frequency === 'daily' ? (
+              <p className="trade-input-hint">
+                每个交易日自动扣款，周末与节假日顺延到下一个交易日。
+              </p>
+            ) : frequency === 'monthly' ? (
               <div className="trade-input-wrapper">
                 <input
                   type="number"
@@ -161,7 +169,7 @@ export default function DCAConfigModal({ fund, onClose }) {
             <div className="preview-row">
               <span className="preview-label">年化投入</span>
               <span className="preview-value text-accent">
-                ¥{(parseFloat(amount || 0) * (frequency === 'weekly' ? 52 : frequency === 'biweekly' ? 26 : 12)).toLocaleString()}
+                ¥{(parseFloat(amount || 0) * timesPerYear).toLocaleString()}
               </span>
             </div>
           </div>

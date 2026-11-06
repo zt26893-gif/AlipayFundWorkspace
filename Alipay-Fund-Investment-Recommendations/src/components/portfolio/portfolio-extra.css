@@ -911,3 +911,19 @@
 .trade-ocr-msg.is-error {
   color: var(--color-warning);
 }
+
+/* ===== 赎回费临界提醒 ===== */
+.fee-tier-hint {
+  margin-top: 8px;
+  padding: 8px 10px;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+  border: 1px dashed rgba(245, 158, 11, 0.45);
+  border-radius: var(--radius-sm);
+}
+
+.fee-tier-inline {
+  color: var(--color-warning);
+}
