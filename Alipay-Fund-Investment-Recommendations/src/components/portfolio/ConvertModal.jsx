@@ -84,6 +84,60 @@ function InlineRate({ value, onCommit, disabled = false, title = '点击修改�
   );
 }
 
+/**
+ * 行内可编辑费用金额：点一下变成输入框，回车/失焦提交，Esc 取消。
+ * 用于在费用结果里直接改「赎回费」金额，提交后由调用方反推费率。
+ */
+function InlineFee({ value, onCommit, disabled = false, title = '点击修改金额' }) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState('');
+
+  const commit = () => {
+    const num = Number(text);
+    if (text !== '' && Number.isFinite(num) && num >= 0) {
+      onCommit(num);
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        className="inline-fee-input"
+        type="number"
+        step="0.01"
+        min="0"
+        autoFocus
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+          if (e.key === 'Escape') setEditing(false);
+        }}
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="inline-fee"
+      disabled={disabled}
+      title={disabled ? '当前持有天数没有命中赎回档位，无法反推费率' : title}
+      onClick={() => {
+        setText(Number(value).toFixed(2));
+        setEditing(true);
+      }}
+    >
+      <span className="inline-fee-num">−{fmtMoney(value)}</span>
+      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+        <path d="M8.5 1.5L10.5 3.5L4 10H2V8L8.5 1.5Z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+      </svg>
+    </button>
+  );
+}
+
 export default function ConvertModal({ fund, onClose }) {
   const funds = useFundStore((s) => s.funds);
   const transactions = useTradeStore((s) => s.transactions);
@@ -257,6 +311,26 @@ export default function ConvertModal({ fund, onClose }) {
   const canSubmit = !!preview && !!toFund && shares > 0 && !overLimit && !modeInfeasible;
 
   const handleAll = () => setSharesInput(String(availableShares));
+
+  /**
+   * 直接改「赎回费」金额 → 反推费率并写进该基金的覆盖配置。
+   * 费率一变，费用明细里前面的百分比、净转入金额、转入份额都会同步重算。
+   */
+  const applyRedeemFee = (amount) => {
+    if (!preview || redeemTierIndex < 0 || !(preview.grossAmount > 0)) return;
+    const r2 = (v) => parseFloat(Number(v).toFixed(2));
+    const target = Math.min(Math.max(0, Number(amount) || 0), preview.grossAmount);
+    let rate = target / preview.grossAmount;
+    // 金额按分四舍五入，反推后重算可能差 1 分，微调费率保证金额精确对上输入值
+    for (let i = 0; i < 200 && r2(preview.grossAmount * rate) !== r2(target); i += 1) {
+      rate += r2(preview.grossAmount * rate) < r2(target) ? 1e-8 : -1e-8;
+      if (rate < 0) {
+        rate = 0;
+        break;
+      }
+    }
+    setFundSellTierRate(fund.code, redeemTierIndex, rate);
+  };
 
   const handleSubmit = () => {
     if (!canSubmit) return;
@@ -442,7 +516,13 @@ export default function ConvertModal({ fund, onClose }) {
                     onCommit={(v) => setFundSellTierRate(fund.code, redeemTierIndex, v)}
                   />{'）'}
                 </span>
-                <span className="preview-value text-warning">−{fmtMoney(preview.redeemFee)}</span>
+                <span className="preview-value">
+                  <InlineFee
+                    value={preview.redeemFee}
+                    disabled={redeemTierIndex < 0 || !(preview.grossAmount > 0)}
+                    onCommit={applyRedeemFee}
+                  />
+                </span>
               </div>
               <div className="preview-row">
                 <span className="preview-label">
@@ -503,7 +583,7 @@ export default function ConvertModal({ fund, onClose }) {
           ) : null}
 
           <p className="trade-input-hint convert-date-hint">
-            费用明细里的费率可直接点击修改，改完会保存为对应基金的覆盖费率。
+            费用明细里的费率和赎回费金额都能直接点开修改：改金额会自动反推费率，并保存为对应基金的覆盖费率。
           </p>
 
           <p className="trade-tip">
