@@ -7,10 +7,20 @@
 
 import useSettingsStore from '../store/useSettingsStore';
 
+const ENV_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY || '';
+const ENV_BASE = import.meta.env.VITE_DEEPSEEK_BASE_URL || 'https://api.deepseek.com';
+const DEFAULT_VISION_MODEL = 'deepseek-flash';
+
 export function getVisionConfig() {
   const ai = useSettingsStore.getState().ai || {};
-  if (!ai.baseUrl || !ai.apiKey || !ai.visionModel) return null;
-  return ai;
+  if (ai.baseUrl && ai.apiKey && ai.visionModel) {
+    return { baseUrl: ai.baseUrl, apiKey: ai.apiKey, visionModel: ai.visionModel, source: 'settings' };
+  }
+  // 设置里没填时，回退到打包内置的 DeepSeek（deepseek-flash 支持图片输入）
+  if (ENV_KEY && ENV_KEY !== 'sk-your-deepseek-api-key-here') {
+    return { baseUrl: ENV_BASE, apiKey: ENV_KEY, visionModel: DEFAULT_VISION_MODEL, source: 'default' };
+  }
+  return null;
 }
 
 function fileToDataUrl(file) {
@@ -69,6 +79,7 @@ export async function recognizeTradeImage(file) {
       body: {
         model: ai.visionModel,
         temperature: 0,
+        max_tokens: 1500,
         messages: [
           {
             role: 'user',
@@ -88,7 +99,8 @@ export async function recognizeTradeImage(file) {
   }
 
   const data = await res.json();
-  const content = data.choices?.[0]?.message?.content;
+  const message = data.choices?.[0]?.message || {};
+  const content = message.content || message.reasoning_content;
   const text = Array.isArray(content)
     ? content.map((c) => c.text || '').join('\n')
     : String(content || '');

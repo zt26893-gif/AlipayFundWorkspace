@@ -147,7 +147,7 @@ export default function SettingsModal({ onClose }) {
                 <input
                   type="text"
                   className="settings-input"
-                  placeholder="qwen-vl-max"
+                  placeholder="deepseek-flash（默认）"
                   value={ai.visionModel}
                   onChange={(e) => setAI({ visionModel: e.target.value.trim() })}
                   spellCheck={false}
