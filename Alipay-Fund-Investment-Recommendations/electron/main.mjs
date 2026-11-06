@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Electron 桌面壳 —— 把「本地服务端 + 已构建前端」包成一个双击即用的桌面程序
  *
  * 结构：
@@ -18,6 +18,9 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 // ESM 下 import 'electron' 拿到的是 npm 包路径而不是 Electron API，必须走内置 require
 const { app, BrowserWindow, Menu, dialog } = require('electron');
+
+// 本地服务只走 127.0.0.1，绝不能落到系统代理上
+app.commandLine.appendSwitch('no-proxy-server');
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -138,6 +141,10 @@ async function createWindow(url) {
       mainWindow.webContents.reload();
       event.preventDefault();
     }
+  });
+
+  mainWindow.webContents.on('did-fail-load', (_e, code, desc, failedUrl) => {
+    console.warn(`[window] 加载失败 code=${code} desc=${desc} url=${failedUrl}`);
   });
 
   await mainWindow.loadURL(url);
