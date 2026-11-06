@@ -73,6 +73,29 @@ function readLocalSnapshot() {
 const hasAny = (snap) =>
   !!snap && (snap.fundPool != null || snap.trades != null || snap.fees != null);
 
+/** 交易按 id 合并去重；本地新增但没来得及入库的记录不会因为“服务端优先”被抹掉 */
+function mergeTransactions(serverTxs = [], localTxs = []) {
+  const map = new Map();
+  for (const tx of serverTxs) if (tx && tx.id) map.set(tx.id, tx);
+  for (const tx of localTxs) if (tx && tx.id && !map.has(tx.id)) map.set(tx.id, tx);
+  return [...map.values()].sort(
+    (a, b) => new Date(a.orderTime || 0) - new Date(b.orderTime || 0)
+  );
+}
+
+function mergeTrades(serverTrades, localTrades) {
+  const serverTxs = serverTrades?.transactions || [];
+  const localTxs = localTrades?.transactions || [];
+  if (localTxs.length === 0) return null;
+  const merged = mergeTransactions(serverTxs, localTxs);
+  if (merged.length <= serverTxs.length) return null;
+  return {
+    ...serverTrades,
+    transactions: merged,
+    dcaPlans: serverTrades?.dcaPlans?.length ? serverTrades.dcaPlans : localTrades?.dcaPlans || [],
+  };
+}
+
 /* ===== 与服务端交互 ===== */
 
 async function pushSnapshot(snapshot) {
@@ -104,6 +127,22 @@ export async function hydrateFromServer() {
         return { mode: 'migrated' };
       }
       return { mode: 'fresh' };
+    }
+
+    // 合并而不是直接覆盖：浏览器里有、服务端没有的交易（例如上次保存失败）先并进去
+    const localSnapshot = readLocalSnapshot();
+    const mergedTrades = mergeTrades(data.state?.trades, localSnapshot.trades);
+    if (mergedTrades) {
+      const mergedState = { ...data.state, trades: mergedTrades };
+      await pushSnapshot({
+        fundPool: mergedState.fundPool,
+        trades: mergedState.trades,
+        fees: mergedState.fees,
+        privacy: mergedState.privacy,
+      });
+      applySnapshotToLocal(mergedState);
+      console.log('[state] 已合并本地新增交易并回写服务端（%d 笔）', mergedTrades.transactions.length);
+      return { mode: 'merged' };
     }
 
     applySnapshotToLocal(data.state);

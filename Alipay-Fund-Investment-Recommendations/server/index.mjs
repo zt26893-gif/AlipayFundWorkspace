@@ -30,7 +30,7 @@ const STATE_KEYS = ['fundPool', 'trades', 'fees', 'privacy'];
 await mkdir(DATA_DIR, { recursive: true });
 await mkdir(BACKUP_DIR, { recursive: true });
 
-/** 启动时备份当前数据库，保留最近 10 份（防止误操作/测试数据覆盖） */
+/** 备份当前数据库，保留最近 30 份（防止误操作/测试数据覆盖） */
 async function backupDatabase() {
   try {
     const info = await stat(DB_PATH).catch(() => null);
@@ -42,7 +42,7 @@ async function backupDatabase() {
     const files = (await readdir(BACKUP_DIR))
       .filter((f) => f.startsWith('app-') && f.endsWith('.db'))
       .sort();
-    for (const old of files.slice(0, Math.max(0, files.length - 10))) {
+    for (const old of files.slice(0, Math.max(0, files.length - 30))) {
       await unlink(path.join(BACKUP_DIR, old)).catch(() => {});
     }
     console.log(`  已备份数据库：${path.basename(target)}`);
@@ -52,6 +52,17 @@ async function backupDatabase() {
 }
 
 await backupDatabase();
+
+// 运行期间每 10 分钟检查一次，数据库有变化就再备份一份
+let lastBackupSize = 0;
+setInterval(async () => {
+  try {
+    const info = await stat(DB_PATH).catch(() => null);
+    if (!info || info.size === lastBackupSize) return;
+    lastBackupSize = info.size;
+    await backupDatabase();
+  } catch {}
+}, 10 * 60 * 1000).unref();
 
 const db = new DatabaseSync(DB_PATH);
 db.exec(`
