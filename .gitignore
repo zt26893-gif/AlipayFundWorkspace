@@ -1,0 +1,24 @@
+# ===== 依赖与构建产物 =====
+**/node_modules/
+**/dist/
+release/
+*.tsbuildinfo
+
+# ===== 项目内隔离运行时（体积大，可随时重建，见 环境与打包说明.md）=====
+runtime/
+downloads/
+.npm-cache/
+
+# ===== 个人数据（数据库不入库，避免隐私/冲突）=====
+**/data/*.db
+**/data/*.db-journal
+**/data/*.db-wal
+**/data/backups/
+**/data/runtime/
+**/runtime-data/
+
+# ===== 临时/系统 =====
+*.log
+smoke*.png
+Thumbs.db
+desktop.ini
