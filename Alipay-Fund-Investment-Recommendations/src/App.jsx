@@ -23,13 +23,19 @@ import { fetchFundInfo } from './services/fundService';
 const DEFAULT_FUNDS = ['000001', '161725', '005827'];
 
 export default function App() {
-  const { funds, selectedFundCode, addFund } = useFundStore();
+  const { funds, selectedFundCode, addFund, selectFund } = useFundStore();
   const transactions = useTradeStore((s) => s.transactions);
   const language = useSettingsStore((s) => s.language);
   const t = useMemo(() => (key, vars) => translate(language, key, vars), [language]);
   // 视图切换：detail = 单只基金详情，overview = 组合趋势总览
   const [view, setView] = useState('detail');
   const [showSettings, setShowSettings] = useState(false);
+
+  // 左栏点基金 → 直接跳到单只基金详情；总览里的推荐项也走这里
+  const openFundDetail = (code) => {
+    if (code) selectFund(code);
+    setView('detail');
+  };
 
   // 临时：强制清理用户的错误脏数据（5.5246 成本价），避免用户误会算法错误
   useEffect(() => {
@@ -76,7 +82,7 @@ export default function App() {
     <div className="app-container">
       <Header />
       <div className="app-body">
-        <Sidebar onOpenSettings={() => setShowSettings(true)} />
+        <Sidebar onOpenSettings={() => setShowSettings(true)} onFundSelected={() => setView('detail')} />
         <main className="main-content">
           <div className="view-switcher">
             <button
@@ -97,7 +103,7 @@ export default function App() {
           </div>
 
           {view === 'overview' ? (
-            <OverviewPanel />
+            <OverviewPanel onOpenFund={openFundDetail} />
           ) : (
             <>
               {/* 上半部分：基金详情 + 图表 */}

@@ -47,7 +47,7 @@ function ActionBadge({ action }) {
   return <span className={`ov-action ${cls}`}>{action}</span>;
 }
 
-export default function OverviewPanel() {
+export default function OverviewPanel({ onOpenFund }) {
   const funds = useFundStore((s) => s.funds);
   const [days, setDays] = useState(10);
   const [raw, setRaw] = useState({ fundHistories: [], indexTrend: null, sectors: [] });
@@ -336,6 +336,39 @@ export default function OverviewPanel() {
         />
       </div>
 
+      {/* 推荐持有 */}
+      {strategy && strategy.allocations && strategy.allocations.length > 0 ? (
+        <div className="ov-card ov-alloc-card">
+          <div className="ov-card-head">
+            <h3 className="ov-card-title">
+              推荐持有
+              <span className="ov-alloc-sub">按 AI 综合评分排序 · 点击查看单只基金</span>
+            </h3>
+          </div>
+          <div className="ov-alloc-grid">
+            {strategy.allocations.map((a) => (
+              <button
+                type="button"
+                key={a.code || a.name}
+                className="ov-alloc-tile"
+                onClick={() => onOpenFund && onOpenFund(a.code)}
+                title={a.code ? `查看 ${a.name}（${a.code}）` : a.name}
+              >
+                <div className="ov-alloc-tile-head">
+                  <span className="ov-alloc-name">{a.name}</span>
+                  <code className="ov-alloc-code">{a.code}</code>
+                </div>
+                <div className="ov-alloc-tile-meta">
+                  <ActionBadge action={a.action} />
+                  <span className="ov-alloc-weight">{a.weight}</span>
+                </div>
+                {a.reason ? <p className="ov-alloc-reason">{a.reason}</p> : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {/* 趋势图 + 侧栏 */}
       <div className="ov-main">
         <div className="ov-card ov-trend-card">
@@ -460,22 +493,6 @@ export default function OverviewPanel() {
                 <span className="ov-ai-label">大盘与板块</span>
                 {strategy.marketView}
               </p>
-            ) : null}
-
-            {strategy.allocations.length > 0 ? (
-              <div className="ov-alloc-list">
-                {strategy.allocations.map((a) => (
-                  <div key={a.code || a.name} className="ov-alloc-item">
-                    <div className="ov-alloc-head">
-                      <span className="ov-alloc-name">{a.name}</span>
-                      <code className="ov-alloc-code">{a.code}</code>
-                      <ActionBadge action={a.action} />
-                      <span className="ov-alloc-weight">{a.weight}</span>
-                    </div>
-                    <p className="ov-alloc-reason">{a.reason}</p>
-                  </div>
-                ))}
-              </div>
             ) : null}
 
             {strategy.risks.length > 0 ? (

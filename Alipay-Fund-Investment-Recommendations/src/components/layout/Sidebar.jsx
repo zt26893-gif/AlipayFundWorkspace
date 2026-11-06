@@ -9,7 +9,7 @@ import useSettingsStore from '../../store/useSettingsStore';
 import { translate } from '../../i18n';
 import { searchFund, fetchFundInfo } from '../../services/fundService';
 
-export default function Sidebar({ onOpenSettings }) {
+export default function Sidebar({ onOpenSettings, onFundSelected }) {
   const { funds, selectedFundCode, addFund, removeFund, selectFund } = useFundStore();
   const language = useSettingsStore((s) => s.language);
   const t = useMemo(() => (key, vars) => translate(language, key, vars), [language]);
@@ -72,7 +72,7 @@ export default function Sidebar({ onOpenSettings }) {
             <div
               key={f.code}
               className={`collapsed-fund-dot ${f.code === selectedFundCode ? 'active' : ''} ${f.dailyChange >= 0 ? 'rise' : 'fall'}`}
-              onClick={() => selectFund(f.code)}
+              onClick={() => { selectFund(f.code); if (onFundSelected) onFundSelected(f.code); }}
               title={`${f.name} (${f.code})`}
             />
           ))}
@@ -187,7 +187,7 @@ export default function Sidebar({ onOpenSettings }) {
             <div
               key={fund.code}
               className={`fund-item ${fund.code === selectedFundCode ? 'active' : ''}`}
-              onClick={() => selectFund(fund.code)}
+              onClick={() => { selectFund(fund.code); if (onFundSelected) onFundSelected(fund.code); }}
             >
               <div className="fund-item-header">
                 <span className="fund-item-name">{fund.name}</span>
