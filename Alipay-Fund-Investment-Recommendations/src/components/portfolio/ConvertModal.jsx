@@ -16,6 +16,7 @@ import {
   toFundPerspective,
   calcNavDate,
   calcConfirmDate,
+  isTxConfirmed,
   CONVERT_ROUNDING,
 } from '../../utils/tradeEngine';
 import { fetchFundHistory } from '../../services/fundService';
@@ -168,14 +169,13 @@ export default function ConvertModal({ fund, onClose }) {
     [funds, fund?.code]
   );
 
-  // 当前基金的可用份额与加权持有天数
+  // 当前基金的可用份额与加权持有天数（已确认份额按「今天」判断，不看净值日期）
   const { availableShares, holdingDays } = useMemo(() => {
     if (!fund) return { availableShares: 0, holdingDays: 0 };
-    const navDate = fund.navDate || null;
     const visible = transactions
       .map((tx) => toFundPerspective(tx, fund.code))
       .filter(Boolean)
-      .filter((tx) => tx.status === 'confirmed' && (!navDate || tx.confirmDate <= navDate));
+      .filter((tx) => isTxConfirmed(tx));
 
     const buyTxs = visible.filter((tx) => tx.type === 'buy');
     const sellTxs = visible.filter((tx) => tx.type === 'sell');

@@ -25,9 +25,8 @@ export default function FundDetailHeader({ fund }) {
     );
   }
 
-  // 从交易记录获取持仓数据
-  // 必须传 navDate，否则 T+1 未确认的买入也会被算进持仓，和下方面板口径不一致
-  const position = getPosition(fund.code, fund.nav, 0, fund.navDate);
+  // 从交易记录获取持仓数据（是否确认由 isTxConfirmed 按「今天」判断，不再看净值日期）
+  const position = getPosition(fund.code, fund.nav, 0);
   const costPrice = position.costPrice;
   const profitRate = position.holdingProfitRate;
   const hasPosition = position.totalShares > 0;

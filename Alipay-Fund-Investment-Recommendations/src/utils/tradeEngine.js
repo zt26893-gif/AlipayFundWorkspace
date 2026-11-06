@@ -131,6 +131,30 @@ export function calcConfirmDate(orderTime) {
   return formatDate(confirmDate);
 }
 
+/**
+ * 本地日期字符串 YYYY-MM-DD（不要用 toISOString，那是 UTC，会差一天）
+ * @param {Date} [date]
+ */
+export function todayStr(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * 交易是否已确认份额。
+ * 只看「确认日是否已到」——不能拿基金的净值日期(navDate)来卡：
+ * 净值通常晚上才更新，白天 navDate 还停在前一天，会把当天该确认的份额误判成在途。
+ * @param {{status?:string, confirmDate?:string}} tx
+ * @param {string} [asOf] 截止日期，默认今天
+ */
+export function isTxConfirmed(tx, asOf = todayStr()) {
+  if (!tx || tx.status !== 'confirmed') return false;
+  if (!tx.confirmDate) return true;
+  return tx.confirmDate <= asOf;
+}
+
 // ===== 份额与金额计算 =====
 
 /**

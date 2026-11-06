@@ -11,7 +11,7 @@ import FeeSettingsModal from './FeeSettingsModal';
 import DataModal from './DataModal';
 import DCAConfigModal from './DCAConfigModal';
 import TransactionHistory from './TransactionHistory';
-import { calcAvgHoldingDays } from '../../utils/tradeEngine';
+import { calcAvgHoldingDays, isTxConfirmed } from '../../utils/tradeEngine';
 import './portfolio-extra.css';
 
 /**
@@ -100,7 +100,7 @@ export default function PortfolioPanel({ fund }) {
   const buyTxs = useMemo(() => {
     if (!fundCode) return [];
     return transactions.filter(
-      (tx) => tx.fundCode === fundCode && tx.type === 'buy' && tx.status === 'confirmed'
+      (tx) => tx.fundCode === fundCode && tx.type === 'buy' && isTxConfirmed(tx)
     );
   }, [transactions, fundCode]);
 
@@ -110,11 +110,11 @@ export default function PortfolioPanel({ fund }) {
 
   if (!fund) return null;
 
-  const position = getPosition(fund.code, fund.nav, yesterdayNav, fund.navDate);
+  const position = getPosition(fund.code, fund.nav, yesterdayNav);
   const dcaPlan = getDCAPlan(fund.code);
   const hasPosition = position.totalShares > 0;
 
-  // 尚未登记份额的交易：确认日晚于当前净值日期，getPosition 会把它们排除在外。
+  // 尚未到确认日（按今天判断）的交易：getPosition 会把它们排除在外，
   // 这里单独列出来，避免用户刚买完却看到"什么都没有"。
   // 注意转换记录只挂在转出基金上，转入方要靠 toFundCode 才能认出来。
   const pendingTxs = transactions.filter((tx) => {
@@ -122,9 +122,7 @@ export default function PortfolioPanel({ fund }) {
       tx.fundCode === fund.code || (tx.type === 'convert' && tx.toFundCode === fund.code);
     return (
       relatesToFund &&
-      tx.status === 'confirmed' &&
-      fund.navDate &&
-      tx.confirmDate > fund.navDate
+      !isTxConfirmed(tx)
     );
   });
 

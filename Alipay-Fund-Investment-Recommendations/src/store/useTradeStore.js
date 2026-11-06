@@ -14,6 +14,7 @@ import {
   toFundPerspective,
   generateId,
   formatDate,
+  isTxConfirmed,
 } from '../utils/tradeEngine';
 
 // ===== 持久化 =====
@@ -128,7 +129,7 @@ const useTradeStore = create((set, get) => {
 
       // 获取该基金的买入记录用于计算持有天数
       const buyTxs = state.transactions.filter(
-        (tx) => tx.fundCode === fundCode && tx.type === 'buy' && tx.status === 'confirmed'
+        (tx) => tx.fundCode === fundCode && tx.type === 'buy' && isTxConfirmed(tx)
       );
       const holdingDays = calcAvgHoldingDays(buyTxs, now);
       const { fee, grossAmount, netAmount, feeRate } = calcSellAmount(
@@ -302,26 +303,24 @@ const useTradeStore = create((set, get) => {
      * @param {string} fundCode
      * @param {number} currentNav - 最新净值
      * @param {number} yesterdayNav - 昨日净值（用于今日收益）
-     * @param {string|null} navDate - 最新净值日期（用于过滤未确认的未来交易）
      */
-    getPosition: (fundCode, currentNav, yesterdayNav = 0, navDate = null) => {
+    getPosition: (fundCode, currentNav, yesterdayNav = 0) => {
       const txs = get()
         .transactions.map((tx) => toFundPerspective(tx, fundCode))
         .filter(Boolean)
-        .filter((tx) => tx.status === 'confirmed' && (!navDate || tx.confirmDate <= navDate));
+        .filter((tx) => isTxConfirmed(tx));
       return calcPosition(txs, currentNav, yesterdayNav);
     },
 
     /**
      * 获取某基金的可用份额
      * @param {string} fundCode
-     * @param {string|null} navDate
      */
-    getAvailableShares: (fundCode, navDate = null) => {
+    getAvailableShares: (fundCode) => {
       const txs = get()
         .transactions.map((tx) => toFundPerspective(tx, fundCode))
         .filter(Boolean)
-        .filter((tx) => tx.status === 'confirmed' && (!navDate || tx.confirmDate <= navDate));
+        .filter((tx) => isTxConfirmed(tx));
 
       let shares = 0;
       for (const tx of txs) {

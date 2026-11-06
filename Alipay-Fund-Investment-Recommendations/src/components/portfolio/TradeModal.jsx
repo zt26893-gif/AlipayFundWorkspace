@@ -12,6 +12,7 @@ import {
   calcAvgHoldingDays,
   getSellFeeRate,
   calcNavDate,
+  isTxConfirmed,
 } from '../../utils/tradeEngine';
 import { fetchFundHistory } from '../../services/fundService';
 
@@ -92,7 +93,7 @@ export default function TradeModal({ fund, onClose, initialTab = 'buy' }) {
     if (!shares || shares <= 0 || shares > availableShares || !resolvedNav || !fund?.code) return null;
 
     const buyTxs = getTransactionsForFund(fund.code).filter(
-      (tx) => tx.type === 'buy' && tx.status === 'confirmed'
+      (tx) => tx.type === 'buy' && isTxConfirmed(tx)
     );
     const holdingDays = calcAvgHoldingDays(buyTxs, new Date(orderTime));
     const feeRate = getSellFeeRate(holdingDays, feeConfig.sellTiers);
